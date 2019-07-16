@@ -1,0 +1,223 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>TodoMVC</title>
+    <link rel="stylesheet" href="./css/base.css">
+    <link rel="stylesheet" href="./css/index.css">
+</head>
+<body>
+    <section class="todoapp">
+        <header class="header">
+            <h1>todos</h1>
+            <input 
+                class="new-todo" 
+                autofocus 
+                autocomplete="off" 
+                placeholder="What needs to be done?"
+                @keyup.enter="add"
+                v-model="todoValue"
+            >
+        </header>
+        <section class="main">
+            <input 
+                id="toggle-all" 
+                class="toggle-all" 
+                type="checkbox"
+                @click="toggleAll"
+            >
+            <label 
+                for="toggle-all"
+            >Mark all as complete</label>
+            <ul class="todo-list">
+                <li 
+                    class="todo"
+                    v-for="(item, index) in hashFilter" 
+                    :key="index"
+                    :class="{completed: item.selected, editing: editValue === item}"
+                >
+                    <div class="view">
+                        <input 
+                            class="toggle" 
+                            type="checkbox"
+                            @click="selecte(item)"
+                            v-model="item.selected"
+                        >
+                        <label
+                            v-on:dblClick="edit(item, $event)"
+                        >{{ item.title }}</label>
+                        <button 
+                            class="destroy"
+                            @click="remove(index)"
+                        ></button>
+                    </div>
+                    <input 
+                        class="edit" 
+                        type="text" 
+                        v-model="item.title"
+                        v-todo-focus="editValue == item"
+                        @blur="editDone(item, index)"
+                        @keyup.enter="editDone(item, index)"
+                        @keyup.esc="cancelDone(item, index)"
+                    >
+                </li>
+            </ul>
+        </section>
+        <footer class="footer">
+            <span class="todo-count">
+                <strong>{{ unSeletedNum }}</strong> item left
+            </span>
+            <ul class="filters">
+                <li>
+                    <a 
+                        href="#/all"
+                        :class="{ selected: hashActive === 'all' }"
+                    >All</a>
+                </li>
+                <li>
+                    <a 
+                        href="#/active"
+                        :class=" { selected: hashActive === 'active' } "
+                    >Active</a>
+                </li>
+                <li>
+                    <a 
+                        href="#/completed"
+                        :class=" { selected: hashActive === 'completed' } "
+                    >Completed</a>
+                </li>
+            </ul>
+            <button 
+                class="clear-completed"
+                @click="clearCompleted"
+                v-if="selelted.length"
+            >
+                Clear completed
+            </button>
+        </footer>
+    </section>
+</body>
+<script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+<script src="./js/lodash.js"></script>
+<script>
+    function getFocus () {
+        let newTodo = document.getElementsByClassName('new-todo')[0];
+        newTodo.focus();
+    }
+    window.onload = getFocus;
+
+    let todoList = localStorage.getItem('todoList');
+    if (todoList) {
+        todoList = JSON.parse(todoList)
+    } else {
+        todoList = [];
+    }
+
+    const vm = new Vue({
+        el: ".todoapp",
+        data: {
+            todoList: todoList,
+            todoValue: "",
+            hashActive: "all",
+            editValue: "",
+            cancelValue: ""
+        },
+        computed: {
+            selelted: function () {
+                return _.filter(this.todoList, function (item) {
+                    return item.selected;
+                })
+            },
+            unSeletedNum: function () {
+                return this.todoList.length - this.selelted.length;
+            },
+            unSeleted: function () {
+                return this.todoList.filter((item, index, array) => {
+                    return !item.selected;
+                })
+            },
+            hashFilter: function () {
+                getFocus();
+
+                if (this.hashActive === 'all') {
+                    return this.todoList;
+                } else if (this.hashActive === 'active') {
+                    return this.unSeleted;
+                } else if (this.hashActive === 'completed'){
+                    return this.selelted;
+                } else {
+                    return this.todoList;
+                }
+            }
+        },
+        methods: {
+            selecte: function (item) {
+                item.selected = !item.selected;
+            },
+            remove: function (index) {
+                this.todoList.splice(index, 1);
+            },
+            add: function () {
+                let todoLength = this.todoList.length;
+                this.todoList.push({
+                    "id": todoLength + 1,
+                    "title": this.todoValue,
+                    "selected": false
+                })
+                this.todoValue = ""
+            },
+            toggleAll: function () {
+                let selectedAll = this.todoList.every(function (item, index, array) {
+                    return item.selected;
+                })
+
+                if (selectedAll) {
+                    this.todoList.forEach(item => {
+                        item.selected = false;
+                    });
+                } else {
+                    this.todoList.forEach(item => {
+                        item.selected = true;
+                    });
+                }
+            },
+            clearCompleted: function () {
+                this.todoList = this.unSeleted;
+            },
+            edit: function (item, el) {
+                this.editValue = item;
+                this.cancelValue = item.title;
+            },
+            editDone: function (item, index) {
+                if (!item.title) {
+                    this.todoList.splice(index, 1)
+                }
+                this.editValue = ""
+            },
+            cancelDone: function (item, index) {
+                item.title = this.cancelValue;
+                this.editValue = "";
+                this.cancelValue = "";
+            }
+        },
+        watch: {
+            todoList: {
+                deep: true,
+                handler: function () {
+                    localStorage.setItem('todoList', JSON.stringify(this.todoList));
+                }
+            }
+        },
+        directives: {
+            todoFocus: function (el) {
+                el.focus();
+            }
+        }
+    })
+
+    window.onhashchange = function () {
+        vm.hashActive =  window.location.hash.slice(2);
+    }
+    window.onhashchange();
+</script>
+</html>
